@@ -1,0 +1,12 @@
+version: '2'
+services:
+  candy:
+    image: node:17.0.1
+    command: tail -f
+    volumes:
+      - .:/home
+      - /home/node_modules
+    working_dir: /home
+    container_name: candy
+    ports:
+      - 3005:3000
