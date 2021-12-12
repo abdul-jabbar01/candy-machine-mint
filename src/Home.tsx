@@ -41,10 +41,15 @@ const Home = (props: HomeProps) => {
   const [isActive, setIsActive] = useState(false); // true when countdown completes
   const [isSoldOut, setIsSoldOut] = useState(false); // true when items remaining is zero
   const [isMinting, setIsMinting] = useState(false); // true when user got to press MINT
+  const [isWhitelisted, setisWhitelisted] = useState(false); // true when user got to press MINT
 
   const [itemsAvailable, setItemsAvailable] = useState(0);
   const [itemsRedeemed, setItemsRedeemed] = useState(0);
-  const [itemsRemaining, setItemsRemaining] = useState(0);
+  const [totalItemsRemaining, setTotalItemsRemaining] = useState(0);
+  const [itemsRemainingNonWhitelisted, setItemsRemainingNonWhitelisted] = useState(0);
+  const [itemsRemainingWhitelisted, setItemsRemainingWhitelisted] = useState(0);
+  const [totalWhitelistSpots, setTotalWhitelistSpots] = useState(0);
+  const [remainingWhitelistCountCurrentUser, setRemainingWhitelistCountCurrentUser] = useState(0);
 
   const [alertState, setAlertState] = useState<AlertState>({
     open: false,
@@ -56,6 +61,31 @@ const Home = (props: HomeProps) => {
 
   const wallet = useAnchorWallet();
   const [candyMachine, setCandyMachine] = useState<CandyMachine>();
+
+  const checkWhitelist = () => {
+    (async () => {
+      if (!wallet) return;
+      const data = await fetch(process.env.REACT_APP_MINT_API_URL + `/api/get-whitelist-info/` + wallet.publicKey.toBase58())
+      let body = await data.json();
+
+      if(body.isWhitelisted){
+        console.log('Current wallet is whitelisted');
+        setisWhitelisted(body.isWhitelisted);
+        setRemainingWhitelistCountCurrentUser(body.remainingWhitelistCount);
+      } else {
+        console.log('Current wallet is not whitelisted');
+      }
+
+      // Set Whitelist Info
+      const totalWhitelistCount = body.totalWhitelistSpots;
+      const totalRemaining = itemsAvailable - itemsRedeemed;
+
+      setTotalWhitelistSpots(totalWhitelistCount);
+      setTotalItemsRemaining(totalRemaining);
+      setItemsRemainingWhitelisted(totalWhitelistCount - body.totalWhitelistSpotsMinted);
+      setItemsRemainingNonWhitelisted(totalRemaining - itemsRemainingWhitelisted);
+    })();
+  };
 
   const refreshCandyMachineState = () => {
     (async () => {
@@ -74,7 +104,7 @@ const Home = (props: HomeProps) => {
       );
 
       setItemsAvailable(itemsAvailable);
-      setItemsRemaining(itemsRemaining);
+      setTotalItemsRemaining(totalItemsRemaining);
       setItemsRedeemed(itemsRedeemed);
 
       setIsSoldOut(itemsRemaining === 0);
@@ -103,6 +133,14 @@ const Home = (props: HomeProps) => {
         );
 
         if (!status?.err) {
+          try {
+            await fetch(process.env.REACT_APP_MINT_API_URL + `/api/increment-mints/` + wallet.publicKey.toBase58(), {
+              method: 'POST'
+            });
+          } catch (e) {
+            console.log('error while incrementing');
+          }
+
           setAlertState({
             open: true,
             message: "Congratulations! Mint succeeded!",
@@ -151,6 +189,10 @@ const Home = (props: HomeProps) => {
   };
 
   useEffect(() => {
+    checkWhitelist();
+  }, [candyMachine, wallet, props.connection]);
+
+  useEffect(() => {
     (async () => {
       if (wallet) {
         const balance = await props.connection.getBalance(wallet.publicKey);
@@ -165,6 +207,7 @@ const Home = (props: HomeProps) => {
     props.connection,
   ]);
 
+  // @ts-ignore
   return (
     <main>
       {wallet && (
@@ -175,16 +218,22 @@ const Home = (props: HomeProps) => {
 
       {wallet && <p>Total Available: {itemsAvailable}</p>}
 
+      {wallet && <p>Total Whitelist Spots: {totalWhitelistSpots}</p>}
+
       {wallet && <p>Redeemed: {itemsRedeemed}</p>}
 
-      {wallet && <p>Remaining: {itemsRemaining}</p>}
+      {wallet && <p>Total Remaining: {totalItemsRemaining}</p>}
+
+      {wallet && <p>Remaining Non-Whitelisted: {itemsRemainingNonWhitelisted}</p>}
+
+      {wallet && <p>Remaining Whitelisted: {itemsRemainingWhitelisted}</p>}
 
       <MintContainer>
         {!wallet ? (
           <ConnectButton>Connect Wallet</ConnectButton>
         ) : (
           <MintButton
-            disabled={isSoldOut || isMinting || !isActive}
+            disabled={isSoldOut || isMinting || !isActive || (!isWhitelisted && itemsRemainingNonWhitelisted == 0) || (isWhitelisted && remainingWhitelistCountCurrentUser == 0)}
             onClick={onMint}
             variant="contained"
           >
