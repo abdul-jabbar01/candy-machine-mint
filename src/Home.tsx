@@ -27,6 +27,17 @@ const MintContainer = styled.div``; // add your styles here
 
 const MintButton = styled(Button)``; // add your styles here
 
+const headingStyle = {
+  color: 'white',
+  fontWeight: 'bold',
+  fontsize: '16'
+};
+
+
+const breakClass = {
+  paddingTop: 20
+};
+
 export interface HomeProps {
   candyMachineId: anchor.web3.PublicKey;
   config: anchor.web3.PublicKey;
@@ -210,23 +221,35 @@ const Home = (props: HomeProps) => {
   // @ts-ignore
   return (
     <main>
+
       {wallet && (
-        <p>Wallet {shortenAddress(wallet.publicKey.toBase58() || "")}</p>
+          <div>
+            <span style={headingStyle}>Wallet Address:</span>
+            <span> {shortenAddress(wallet.publicKey.toBase58() || "")}</span>
+          </div>
       )}
 
-      {wallet && <p>Balance: {(balance || 0).toLocaleString()} SOL</p>}
+      {wallet &&
+      <div>
+        <span style={headingStyle}>Balance:</span>
+        <span> {(balance || 0).toLocaleString()} SOL</span>
+      </div>
+      }
 
-      {wallet && <p>Total Available: {itemsAvailable}</p>}
+      {<div className="heading-text"></div>}
+
+      {wallet && <p>Total Spots: {itemsAvailable}</p>}
+      {wallet && <p>Redeemed: {itemsRedeemed}</p>}
+      {wallet && <p>Remaining Spots: {totalItemsRemaining}</p>}
+
+      {<div className="heading-text"></div>}
 
       {wallet && <p>Total Whitelist Spots: {totalWhitelistSpots}</p>}
 
-      {wallet && <p>Redeemed: {itemsRedeemed}</p>}
+      {wallet && <p>Remaining Whitelisted spots: {itemsRemainingWhitelisted}</p>}
 
-      {wallet && <p>Total Remaining: {totalItemsRemaining}</p>}
+      {wallet && <p>Remaining Non-Whitelisted spots: {itemsRemainingNonWhitelisted}</p>}
 
-      {wallet && <p>Remaining Non-Whitelisted: {itemsRemainingNonWhitelisted}</p>}
-
-      {wallet && <p>Remaining Whitelisted: {itemsRemainingWhitelisted}</p>}
 
       <MintContainer>
         {!wallet ? (
